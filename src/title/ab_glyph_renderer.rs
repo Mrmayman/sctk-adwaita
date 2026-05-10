@@ -4,11 +4,13 @@
 //!
 //! Can fallback to a embedded font
 //! if the system font doesn't work.
+use std::sync::OnceLock;
+
 use crate::title::config;
 use ab_glyph::{point, Font, FontRef, Glyph, PxScale, PxScaleFont, ScaleFont};
 use tiny_skia::{Color, Pixmap, PremultipliedColorU8};
 
-pub static mut BUNDLED: &[u8] = &[];
+pub static BUNDLED: OnceLock<&[u8]> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct AbGlyphTitleText {
@@ -143,7 +145,5 @@ impl AbGlyphTitleText {
 }
 
 fn parse_font() -> FontRef<'static> {
-    // We control the default font, so I guess it's fine to unwrap it
-    #[allow(clippy::unwrap_used)]
-    FontRef::try_from_slice(unsafe { BUNDLED }).unwrap()
+    FontRef::try_from_slice(BUNDLED.get().unwrap()).unwrap()
 }
