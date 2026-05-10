@@ -128,7 +128,7 @@ impl DecorationParts {
         Self { parts }
     }
 
-    pub fn parts(&self) -> std::iter::Enumerate<std::slice::Iter<Part>> {
+    pub fn parts(&self) -> std::iter::Enumerate<std::slice::Iter<'_, Part>> {
         self.parts.iter().enumerate()
     }
 

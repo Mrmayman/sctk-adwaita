@@ -2,19 +2,17 @@
 //!
 //! Requires no dynamically linked dependencies.
 //!
-//! Can fallback to a embedded Cantarell-Regular.ttf font (SIL Open Font Licence v1.1)
+//! Can fallback to a embedded font
 //! if the system font doesn't work.
-use crate::title::{config, font_preference::FontPreference};
-use ab_glyph::{point, Font, FontRef, Glyph, PxScale, PxScaleFont, ScaleFont, VariableFont};
-use std::{fs::File, process::Command};
+use crate::title::config;
+use ab_glyph::{point, Font, FontRef, Glyph, PxScale, PxScaleFont, ScaleFont};
 use tiny_skia::{Color, Pixmap, PremultipliedColorU8};
 
-const CANTARELL: &[u8] = include_bytes!("Cantarell-Regular.ttf");
+pub static mut BUNDLED: &[u8] = &[];
 
 #[derive(Debug)]
 pub struct AbGlyphTitleText {
     title: String,
-    font: Option<(memmap2::Mmap, FontPreference)>,
     original_px_size: f32,
     size: PxScale,
     color: Color,
@@ -25,11 +23,8 @@ impl AbGlyphTitleText {
     pub fn new(color: Color) -> Self {
         let font_pref = config::titlebar_font().unwrap_or_default();
         let font_pref_pt_size = font_pref.pt_size;
-        let font = font_file_matching(&font_pref)
-            .and_then(|f| mmap(&f))
-            .map(|mmap| (mmap, font_pref));
 
-        let size = parse_font(&font)
+        let size = parse_font()
             .pt_to_px_scale(font_pref_pt_size)
             .unwrap_or_else(|| {
                 log::error!("invalid font units_per_em");
@@ -38,7 +33,6 @@ impl AbGlyphTitleText {
 
         Self {
             title: <_>::default(),
-            font,
             original_px_size: size.x,
             size,
             color,
@@ -75,7 +69,7 @@ impl AbGlyphTitleText {
 
     /// Render returning the new `Pixmap`.
     fn render(&self) -> Option<Pixmap> {
-        let font = parse_font(&self.font);
+        let font = parse_font();
         let font = font.as_scaled(self.size);
 
         let glyphs = self.layout(&font);
@@ -148,52 +142,8 @@ impl AbGlyphTitleText {
     }
 }
 
-/// Parse the memmapped system font or fallback to built-in cantarell.
-fn parse_font(sys_font: &Option<(memmap2::Mmap, FontPreference)>) -> FontRef<'_> {
-    match sys_font {
-        Some((mmap, font_pref)) => {
-            FontRef::try_from_slice(mmap)
-                .map(|mut f| {
-                    // basic "bold" handling for variable fonts
-                    if font_pref
-                        .style
-                        .as_deref()
-                        .map_or(false, |s| s.eq_ignore_ascii_case("bold"))
-                    {
-                        f.set_variation(b"wght", 700.0);
-                    }
-                    f
-                })
-                .unwrap_or_else(|_| {
-                    // We control the default font, so I guess it's fine to unwrap it
-                    #[allow(clippy::unwrap_used)]
-                    FontRef::try_from_slice(CANTARELL).unwrap()
-                })
-        }
-        // We control the default font, so I guess it's fine to unwrap it
-        #[allow(clippy::unwrap_used)]
-        _ => FontRef::try_from_slice(CANTARELL).unwrap(),
-    }
-}
-
-/// Font-config without dynamically linked dependencies
-fn font_file_matching(pref: &FontPreference) -> Option<File> {
-    let mut pattern = pref.name.clone();
-    if let Some(style) = &pref.style {
-        pattern.push(':');
-        pattern.push_str(style);
-    }
-    Command::new("fc-match")
-        .arg("-f")
-        .arg("%{file}")
-        .arg(&pattern)
-        .output()
-        .ok()
-        .and_then(|out| String::from_utf8(out.stdout).ok())
-        .and_then(|path| File::open(path.trim()).ok())
-}
-
-fn mmap(file: &File) -> Option<memmap2::Mmap> {
-    // Safety: System font files are not expected to be mutated during use
-    unsafe { memmap2::Mmap::map(file).ok() }
+fn parse_font() -> FontRef<'static> {
+    // We control the default font, so I guess it's fine to unwrap it
+    #[allow(clippy::unwrap_used)]
+    FontRef::try_from_slice(unsafe { BUNDLED }).unwrap()
 }

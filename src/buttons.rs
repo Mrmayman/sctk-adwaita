@@ -141,9 +141,7 @@ impl Buttons {
     }
 
     fn parse_button_layout(sides: Option<(String, String)>) -> Option<ButtonLayout> {
-        let Some((left_side, right_side)) = sides else {
-            return None;
-        };
+        let (left_side, right_side) = sides?;
 
         let buttons_left = Buttons::parse_button_layout_side(left_side, Side::Left);
         let buttons_right = Buttons::parse_button_layout_side(right_side, Side::Right);
