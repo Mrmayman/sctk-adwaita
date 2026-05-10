@@ -33,6 +33,9 @@ pub mod theme;
 mod title;
 mod wl_typed;
 
+#[cfg(all(not(feature = "crossfont"), feature = "ab_glyph"))]
+pub use title::BUNDLED;
+
 use crate::theme::{
     ColorMap, ColorTheme, BORDER_SIZE, CORNER_RADIUS, HEADER_SIZE, RESIZE_HANDLE_CORNER_SIZE,
     VISIBLE_BORDER_SIZE,

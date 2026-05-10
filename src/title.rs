@@ -10,6 +10,8 @@ mod crossfont_renderer;
 
 #[cfg(all(not(feature = "crossfont"), feature = "ab_glyph"))]
 mod ab_glyph_renderer;
+#[cfg(all(not(feature = "crossfont"), feature = "ab_glyph"))]
+pub use ab_glyph_renderer::BUNDLED;
 
 #[cfg(all(not(feature = "crossfont"), not(feature = "ab_glyph")))]
 mod dumb;
